@@ -1,4 +1,13 @@
-#Definindo e calculandos as variáveis
+import time
+import os
+import numpy as np
+import pyvisa as visa
+import pandas as pd
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+
+#Definindo e calculandos as variáveis globais
 
 #Escolha a tensão inicial, final e o passo
 voltage_inicial = 0
@@ -17,10 +26,17 @@ delay_t = 0.05
 estab = 1
 
 #Cálculos dos parametros utilizados na medida
+# float() transforma a variável em float, o python consegue entender e transformar os valores. 
+# Mas no caso, eu vi acima que já são float (0.01 e 0.05) entao o resultado é float tb
+taxa_varredura = passo/delay_t
 
-taxa_varredura = float(passo/delay_t)
 #numero de pontos, pra contagem de trigger
-num_pontos = float((voltage_final - voltage_inicial)/passo)
+# Aqui não é melhor ser int? São pontos num gráfico?
+# Aí ficaria num_pontos = int((voltage_final - voltage_inicial)/passo)
+# voltage_inicial e final podem ser int, não tenho certeza, mas como tá dividindo por passo, vira float o resultado
+# Aí seria melhor pegar floor (para arredondar para baixo) ou soma 1 e tira floor depois (para arredondar para cima)
+
+num_pontos = int((voltage_final - voltage_inicial)/passo)
 num_pontos2 = (num_pontos + 1)
 
 #Definindo os parametros do gate
@@ -28,39 +44,26 @@ voltage_inicial_gate = 0
 voltage_final_gate = 1
 passo_gate = 0.1
 
-
-import time
-import os
-import numpy as np
-import pyvisa as visa
-import pandas as pd
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-
 com_keithley = 'GPIB0::15::INSTR'
 com_agilent = 'GPIB0::10::INSTR'
 
 
-class keithley:
-    def keithley(com_keithley):
-        import pyvisa as visa
-        rm = visa.ResourceManager()
-        sourcemeter = rm.open_resource(str(com_keithley))
-        sourcemeter.timeout = 2500000
-        return sourcemeter
+def keithley(com_keithley):
+    rm = visa.ResourceManager()
+    sourcemeter = rm.open_resource(str(com_keithley))
+    sourcemeter.timeout = 2500000
+    return sourcemeter
 
 
-class agilent:
-    def agilent(com_agilent):
-        import pyvisa as visa
-        rm = visa.ResourceManager()
-        gatesource = rm.open_resource(str(com_agilent))
-        return gatesource
+def agilent(com_agilent):
+    rm = visa.ResourceManager()
+    gatesource = rm.open_resource(str(com_agilent))
+    return gatesource
 
 
 gate_potentials = np.arange(voltage_inicial_gate, voltage_final_gate, passo_gate)
 
-gatesource = agilent.agilent(com_agilent)
+gatesource = agilent(com_agilent)
 gatesource.write('disp off')
 gatesource.write('outp on')
 
@@ -70,7 +73,7 @@ for n in tqdm(list(range(len(gate_potentials)))):
 
     gatesource.write('volt:offs ' + str(gate_potentials[n] / 2))
 
-    sourcemeter = keithley.keithley(com_keithley)
+    sourcemeter = keithley(com_keithley)
 
     sourcemeter.write('*RST')
     sourcemeter.write(':SOUR:FUNC CONC OFF')
